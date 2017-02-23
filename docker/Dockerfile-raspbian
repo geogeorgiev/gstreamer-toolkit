@@ -1,0 +1,63 @@
+FROM gooshan/raspbian-dev:latest
+
+RUN apt-get update \
+  && apt-get upgrade -y 
+  
+RUN apt-get install -y --force-yes  \
+  flex libaa1-dev iso-codes libgtk-3-dev \
+  libasound2-dev libvorbis-dev libshout3-dev libflac-dev libdca-dev \
+  libfaad-dev libmpcdec-dev libopus-dev libslv2-dev libsndfile1-dev \
+  libsoundtouch-dev libmad0-dev libmp3lame-dev libmpeg2-4-dev \
+  libxt-dev libtheora-dev libv4l-dev libavcodec-dev libavformat-dev libdv4-dev libwavpack-dev libvpx-dev \
+  libschroedinger-dev libiec61883-dev libspeex-dev libmimic-dev libx264-dev libxvidcore-dev liba52-0.7.4-dev \
+  libpng-dev libtiff5-dev libjasper-dev libjpeg-dev   \
+  libtag1-dev libexif-dev libiptcdata0-dev \
+  librtmp-dev python3-dev python3-numpy python3-pip
+
+RUN apt-get clean 
+
+ENV LD_LIBRARY_PATH /usr/local/lib/
+
+VOLUME /root/sources
+ADD sources /root/sources
+WORKDIR /root/sources/gstreamer
+RUN ./autogen.sh --disable-gtk-doc && \
+  make && \
+  make install
+
+WORKDIR /root/sources/gst-plugins-base
+RUN ./autogen.sh --disable-gtk-doc && \
+  make && \
+  make install
+
+WORKDIR /root/sources/gst-plugins-good
+RUN ./autogen.sh --disable-gtk-doc && \
+  make && \
+  make install
+
+WORKDIR /root/sources/gst-plugins-ugly
+RUN ./autogen.sh --disable-gtk-doc && \
+  make && \
+  make install
+
+WORKDIR /root/sources/gst-libav
+RUN ./autogen.sh --disable-gtk-doc && \
+  make && \
+  make install
+
+WORKDIR /root/sources/gst-omx
+ADD vc /opt/vc
+ENV LDFLAGS '-L/opt/vc/lib'
+ENV CFLAGS '-I/opt/vc/include -I/opt/vc/include/IL -I/opt/vc/include/interface/vcos/pthreads -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/IL'
+ENV CPPFLAGS '-I/opt/vc/include -I/opt/vc/include/IL -I/opt/vc/include/interface/vcos/pthreads -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/IL'
+
+RUN ./autogen.sh --disable-gtk-doc --with-omx-target=rpi --with-omx-header-path=/opt/vc/include/IL && \
+  make CFLAGS+="-Wno-error -Wno-redundant-decls" LDFLAGS+="-L/opt/vc/lib" && \
+  make install
+
+WORKDIR /root/sources/gst-python
+RUN PYTHON=/usr/local/bin/python3 ./autogen.sh --disable-gtk-doc && \
+  make && \
+  make install
+
+WORKDIR /root
